@@ -1,0 +1,23 @@
+{
+  "name": "seng-gui-port-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf dist && mvn clean",
+    "dev": "node dev.mjs",
+    "build": "node build.mjs",
+    "verify": "biome check . && mvn spotless:check",
+    "verify:fix": "biome check --write . && mvn spotless:apply && mvn checkstyle:check"
+  },
+  "devDependencies": {
+    "@awesome.me/webawesome": "3.12.0",
+    "@biomejs/biome": "^2.5.12",
+    "esbuild": "0.28.2",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

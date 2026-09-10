@@ -1,0 +1,422 @@
+name: test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-seng201:
+    runs-on: ubuntu-latest
+
+    outputs:
+      exit_code: ${{ steps.tests.outputs.exit_code }}
+
+    steps:
+      - name: Checkout SENG201 project
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ secrets.SENG201_REPO_NAME }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Install
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Test
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          xvfb-run -a mvn clean test 2>&1 | tee "$GITHUB_WORKSPACE/test-seng201.log"
+          TEST_EXIT=${PIPESTATUS[0]}
+          echo "exit_code=$TEST_EXIT" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-seng201-res
+          if-no-files-found: ignore
+          path: |
+            test-seng201.log
+            target/surefire-reports/**
+            target/failsafe-reports/**
+
+  test-seng301:
+    runs-on: ubuntu-latest
+
+    outputs:
+      exit_code: ${{ steps.tests.outputs.exit_code }}
+
+    steps:
+      - name: Checkout SENG301 project
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ secrets.SENG301_REPO_NAME }}
+          token: ${{ secrets.PRIVATE_REPO_TOKEN }}
+          persist-credentials: false
+
+      - name: Setup
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Install
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Test
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          xvfb-run -a mvn clean \
+            -Dtest=GenericTestRunner \
+            -Dcucumber.plugin=pretty,json:target/cucumber.json \
+            test 2>&1 | tee "$GITHUB_WORKSPACE/test-seng301-cucumber.log"
+          TEST_EXIT=${PIPESTATUS[0]}
+          echo "exit_code=$TEST_EXIT" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-seng301-res
+          if-no-files-found: ignore
+          path: |
+            test-seng301-cucumber.log
+            target/cucumber.json
+            target/**/*cucumber*.json
+            target/**/*cucumber*.xml
+            target/**/*cucumber*.html
+
+  readme:
+    runs-on: ubuntu-latest
+    needs:
+      - test-seng201
+      - test-seng301
+    if: always()
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download SENG201 results
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: test-seng201-res
+          path: results/seng201
+
+      - name: Download SENG301 results
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: test-seng301-res
+          path: results/seng301
+
+      - name: Generate
+        shell: bash
+        env:
+          SENG201_EXIT: ${{ needs.test-seng201.outputs.exit_code }}
+          SENG301_EXIT: ${{ needs.test-seng301.outputs.exit_code }}
+          SENG201_RES: ${{ needs.test-seng201.result }}
+          SENG301_RES: ${{ needs.test-seng301.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          python3 <<'PY'
+          from json import JSONDecodeError, loads
+          from xml.etree import ElementTree
+          from collections import Counter
+          from pathlib import Path
+          
+          COUNTS: tuple[str, str, str, str] = ("tests", "failures", "errors", "skipped")
+          
+          
+          def test_status(exit_code: str) -> str:
+              return "PASS" if exit_code == "0" else "FAIL"
+          
+          
+          def status_from(statuses: set[str], failures: set[str], skipped: set[str]) -> str:
+              if statuses & failures:
+                  return "FAIL"
+              return "SKIP" if statuses & skipped else "PASS"
+          
+          
+          def local_tag(element: ElementTree.Element) -> str:
+              return element.tag.rsplit("}", 1)[-1]
+          
+          
+          def junit_results(root: Path) -> dict[str, int | list[dict[str, str]]]:
+              summary: dict[str, int | list[dict[str, str]]] = {
+                  **dict.fromkeys(COUNTS, 0),
+                  "cases": [],
+              }
+              for report in sorted(root.rglob(pattern="*.xml")):
+                  if not {"surefire-reports", "failsafe-reports"}.intersection(report.parts):
+                      continue
+                  try:
+                      xml: ElementTree.Element[str] = ElementTree.parse(source=report).getroot()
+                  except (OSError, ElementTree.ParseError):
+                      continue
+          
+                  suites: list[ElementTree.Element[str]] | ElementTree.Element[str] = (
+                      [xml] if local_tag(element=xml) == "testsuite" else xml
+                  )
+                  for suite in suites:
+                      if local_tag(element=suite) != "testsuite":
+                          continue
+                      for key in COUNTS:
+                          summary[key] += int(suite.get(key=key, default="0"))
+                      for case in suite:
+                          if local_tag(element=case) == "testcase":
+                              summary["cases"].append(
+                                  {
+                                      "name": case.get(key="name", default="Unnamed test"),
+                                      "status": status_from(
+                                          statuses={local_tag(element=child) for child in case},
+                                          failures={"failure", "error"},
+                                          skipped={"skipped"},
+                                      ),
+                                  }
+                              )
+              return summary
+          
+          
+          def dict_items(value: list[dict]):
+              return (
+                  (item for item in value if isinstance(item, dict))
+                  if isinstance(value, list)
+                  else ()
+              )
+          
+          
+          def cucumber_results(root: Path) -> list[dict[str, str | list[dict[str, str]]]]:
+              skip_status: set[str] = {"undefined", "pending", "ambiguous", "skipped"}
+              for report in sorted(root.rglob(pattern="*.json")):
+                  if "cucumber" not in str(report).lower():
+                      continue
+                  try:
+                      features: list[dict] = loads(
+                          s=report.read_text(encoding="utf-8", errors="replace")
+                      )
+                  except (OSError, JSONDecodeError):
+                      continue
+          
+                  scenarios: list[dict[str, str | list[dict[str, str]]]] = []
+                  for feature in dict_items(value=features):
+                      feature_name: str = feature.get("name", "Unnamed feature")
+                      for scenario in dict_items(value=feature.get("elements")):
+                          if scenario.get("type") == "background":
+                              continue
+          
+                          statuses: set[str] = set()
+                          steps: list[dict[str, str]] = []
+                          for section in ("before", "steps", "after"):
+                              for step in dict_items(value=scenario.get(section)):
+                                  result: dict | None = step.get("result")
+                                  if isinstance(result, dict):
+                                      statuses.add(str(result.get("status", "")).lower())
+                                  if section == "steps":
+                                      steps.append(
+                                          {
+                                              "keyword": step.get("keyword", "").strip(),
+                                              "text": step.get("name", ""),
+                                          }
+                                      )
+          
+                          scenarios.append(
+                              {
+                                  "feature": feature_name,
+                                  "scenario": scenario.get("name", "Unnamed scenario"),
+                                  "status": status_from(
+                                      statuses=statuses, failures={"failed"}, skipped=skip_status
+                                  ),
+                                  "steps": steps,
+                              }
+                          )
+          
+                  if scenarios:
+                      return scenarios
+              return []
+          
+          
+          def unit_results_block(cases: list[dict]) -> str:
+              return "\n".join(f"[{case['status']}] {case['name']}" for case in cases)
+          
+          
+          def unit_section(report: dict) -> list[str]:
+              lines: list[str] = [
+                  "<details>"
+                  "<summary>SENG201 Christchurch International Airport Parking GUI Test Suite</summary>",
+                  "",
+                  "Unit test results are generated from a workflow run on a University of Canterbury JavaFX GUI project.",
+                  "",
+                  "| Test Status | Count |",
+                  "|---|---:|",
+                  f"| Passed | {report['tests'] - report['failures'] - report['errors'] - report['skipped']} |",
+                  f"| Failed | {report['failures'] + report['errors']} |",
+                  f"| Skipped | {report['skipped']} |",
+                  "",
+              ]
+              if report["cases"]:
+                  lines.extend(
+                      [
+                          "```console",
+                          unit_results_block(cases=report["cases"]),
+                          "```",
+                          "</details>",
+                      ]
+                  )
+              return lines
+          
+          
+          def cucumber_section(scenarios: list[dict]) -> list[str]:
+              status_counts = Counter(result["status"] for result in scenarios)
+              num_passed: int = status_counts["PASS"]
+              num_failed: int = status_counts["FAIL"]
+              num_skipped: int = status_counts["SKIP"]
+          
+              result_lines: list[str] = []
+              current_feature: str | None = None
+              for res in scenarios:
+                  if res["feature"] != current_feature:
+                      current_feature = res["feature"]
+          
+                      if result_lines:
+                          result_lines.append("")
+          
+                      result_lines.extend(
+                          [
+                              f"Feature: {current_feature}",
+                              "-" * len(current_feature),
+                              "",
+                          ]
+                      )
+                  result_lines.append(f"Scenario: [{res['status']}] {res['scenario']}\n")
+          
+                  for step in res["steps"]:
+                      result_lines.append(f"  {step['keyword']} {step['text']}")
+                  result_lines.append("")
+          
+              lines: list[str] = [
+                  "<details>"
+                  "<summary>SENG301 NZTA WoF Vehicle Registration GUI BDD Acceptance-Test</summary>",
+                  "",
+                  "Cucumber test results are generated from a workflow run on a University of Canterbury JavaFX GUI project.",
+                  "",
+                  "| Scenario Status | Count |",
+                  "|---|---:|",
+                  f"| Passed | {num_passed} |",
+                  f"| Failed | {num_failed} |",
+                  f"| Skipped | {num_skipped} |",
+                  "",
+              ]
+          
+              if scenarios:
+                  lines.extend(["```gherkin", *result_lines, "```", "</details>"])
+              return lines
+          
+          
+          def main() -> None:
+              seng201: dict[str, int | list[dict[str, str]]] = junit_results(
+                  root=Path("results/seng201")
+              )
+              seng301: list[dict[str, str | list[dict[str, str]]]] = cucumber_results(
+                  root=Path("results/seng301")
+              )
+          
+              lines: list[str] = [
+                  "# SENG JavaFX-to-Web UI Integration Port Demo",
+                  "",
+                  "Static web UI demo of JavaFX GUI software engineering projects completed at the University of Canterbury:  ",
+                  "* SENG201: Christchurch International Airport Parking",
+                  "* SENG301: (NZTA WoF) Vehicle Registration"
+                  "",
+                  "> Note: courses/projects completed before ChatGPT and other Gen-AI models have been publicly available.",
+                  "",
+                  "There are two existing vehicle owner registrations in the SQLite DB sample:",
+                  "```console",
+                  "email: one@test.com",
+                  "password: one",
+                  "```",
+                 "```console",
+                  "email: two@test.com",
+                  "password: two",
+                  "```",
+                  "",
+                  "## Original JavaFX GUI/CLI App Project Test Results",
+                  "",
+              ]
+              lines.extend(unit_section(report=seng201))
+              lines.extend([""])
+              lines.extend(cucumber_section(scenarios=seng301))
+          
+              Path("README.md").write_text(data="\n".join(lines), encoding="utf-8")
+          
+          
+          if __name__ == "__main__":
+              main()
+          PY
+
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name "Adam Ross [workflow]"
+          git config user.email "14985050+r055a@users.noreply.github.com"
+
+          git add README.md
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Create README.md"
+            git push
+          fi
+
+  status:
+    runs-on: ubuntu-latest
+    needs:
+      - test-seng201
+      - test-seng301
+      - readme
+    if: always()
+    steps:
+      - name: Verify
+        shell: bash
+        run: |
+          FAIL=0
+
+          if [ "${{ needs.test-seng201.result }}" != "success" ] \
+             || [ "${{ needs.test-seng201.outputs.exit_code }}" != "0" ]; then
+            echo "SENG201 unit-tests failed"
+            FAIL=1
+          fi
+
+          if [ "${{ needs.test-seng301.result }}" != "success" ] \
+             || [ "${{ needs.test-seng301.outputs.exit_code }}" != "0" ]; then
+            echo "SENG301 BDD acceptance-tests failed"
+            FAIL=1
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            exit 1
+          fi

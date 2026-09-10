@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142c3e">
+  <title>Airport Parking + Vehicle Registration</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="airport-parking.js"></script>
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main class="app-shell tw:mx-auto tw:grid tw:grid-rows-[auto_minmax(0,1fr)] tw:overflow-hidden tw:h-dvh tw:max-w-[1680px]">
+    <header class="topbar tw:grid tw:items-center">
+      <div class="brand-block tw:flex tw:items-center tw:min-w-0 tw:h-full">
+        <span class="brand-symbol" id="pageSymbol" aria-hidden="true">P</span>
+        <h1 id="pageTitle">Christchurch International Airport Parking</h1>
+        <span id="pageSummary" hidden></span>
+      </div>
+
+      <div class="navigation-row tw:flex tw:items-center tw:min-w-0 tw:overflow-x-auto tw:overflow-y-hidden">
+      <nav class="app-nav tw:flex tw:shrink-0 tw:h-full" aria-label="Application sections">
+        <button id="navParking" type="button" class="nav-button active">Parking</button>
+        <button id="navRego" type="button" class="nav-button">Registration</button>
+      </nav>
+        <div class="registry-header-stats">
+          <span><strong id="registryVehicleCount">0</strong> vehicles</span>
+          <span><strong id="registryOwnerCount">0</strong> owners</span>
+        </div>
+      </div>
+
+      <div class="header-tools tw:grid tw:items-center tw:min-w-0 tw:h-full">
+      <div id="parkingHeaderTools" class="topbar-right">
+        <div class="mode-switch">
+          <button id="versionLegacy" type="button" class="mode-button">Legacy</button>
+          <button id="versionModern" type="button" class="mode-button active">Current</button>
+        </div>
+        <span id="modeBadge" hidden></span>
+      </div>
+
+      <div id="regoHeaderTools" class="topbar-right hidden">
+        <div class="registration-header-actions">
+          <span id="registrySessionBadge" class="mode-badge">Signed out</span>
+          <button id="resetRegistry" type="button" class="small-button">Reset</button>
+          <button id="logoutOwner" type="button" class="small-button hidden">Logout</button>
+        </div>
+      </div>
+      </div>
+    </header>
+
+    <section id="parkingPage" class="page tw:min-h-0 tw:min-w-0 tw:h-full tw:overflow-hidden">
+      <div class="panel-workspace parking-workspace tw:grid tw:h-full tw:min-h-0 tw:min-w-0 tw:grid-rows-[minmax(0,1fr)] tw:compact:grid-rows-[auto_minmax(0,1fr)] tw:compact:gap-2.5">
+      <div class="panel-tabs tw:hidden tw:compact:grid tw:grid-cols-3 tw:gap-1 tw:p-1" role="tablist" aria-label="Parking tools">
+        <button type="button" id="parkingPlanTab" role="tab" aria-controls="parkingPlanPanel" aria-selected="true">Plan</button>
+        <button type="button" id="parkingGateTab" role="tab" aria-controls="parkingGatePanel" aria-selected="false" tabindex="-1">Gate</button>
+        <button type="button" id="parkingCapacityTab" role="tab" aria-controls="parkingCapacityPanel" aria-selected="false" tabindex="-1">Capacity</button>
+      </div>
+      <div class="desktop-grid tw:grid tw:h-full tw:min-h-0 tw:grid-cols-3 tw:grid-rows-[minmax(0,1fr)] tw:gap-[18px] tw:overflow-hidden tw:compact:grid-cols-1 tw:compact:gap-0">
+        <article id="parkingPlanPanel" class="card quote-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
+          <div class="section-heading compact tw:grid tw:grid-cols-1">
+            <div>
+              <h2>Plan</h2>
+              
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <label for="quoteParkingLot">Car park</label>
+          <select id="quoteParkingLot"></select>
+
+          <div class="date-grid tight">
+            <div>
+              <label for="arrival">Arrival</label>
+              <input id="arrival" type="datetime-local">
+            </div>
+            <div>
+              <label for="departure">Departure</label>
+              <input id="departure" type="datetime-local">
+            </div>
+          </div>
+
+          <button id="quote" type="button" class="button button-outline button-wide">Quote</button>
+
+          <div class="quote-result" aria-live="polite">
+            <span class="result-label">Estimated total</span>
+            <strong id="quoteTotal">—</strong>
+            <span id="quoteDuration" class="result-detail">Use the original pricing rules.</span>
+          </div>
+
+          <div class="info-strip">
+            <div class="info-kicker" id="selectedLotLabel">Express Park</div>
+            <div id="rateSummary" class="info-text">Legacy pricing rule.</div>
+            <span id="sourceNote" hidden></span>
+          </div>
+          <div class="compact-feedback" data-feedback-source="message" aria-live="polite"></div>
+        </article>
+
+        <article id="parkingGatePanel" class="card gate-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
+          <div class="section-heading compact tw:grid tw:grid-cols-1">
+            <div>
+              <h2>Park</h2>
+              
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <label for="vehicleReg">Registration</label>
+          <input id="vehicleReg" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ABC123">
+
+          <div id="registrationStatus" class="registration-status unregistered" aria-live="polite">
+            <span class="registration-mark" aria-hidden="true"></span>
+            <div class="registration-copy">
+              <strong id="registrationStatusTitle">Registration required</strong>
+              <span id="registrationStatusDetail">Only registered vehicles can check in or out.</span>
+            </div>
+          </div>
+
+          <label for="gateParkingLot" class="field-gap">Car park</label>
+          <select id="gateParkingLot"></select>
+
+          <div class="gate-focus">
+            <span class="mini-label">Selected lot</span>
+            <strong id="gateSelectedLot">—</strong>
+            <span id="gateSelectedFree" class="mini-meta">—</span>
+          </div>
+
+          <div class="gate-actions">
+            <button id="checkIn" type="button" class="button button-primary">Check in</button>
+            <button id="checkOut" type="button" class="button button-outline">Check out</button>
+          </div>
+
+          <div id="message" class="session-message" aria-live="polite">Enter a plate to begin.</div>
+        </article>
+
+        <article id="parkingCapacityPanel" class="card capacity-card compact-fit tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
+          <div class="section-heading compact tw:grid tw:grid-cols-1">
+            <div>
+              <h2>Capacity</h2>
+              <span id="capacityCaption" hidden></span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+          <div id="capacityList" class="capacity-list"></div>
+        </article>
+      </div>
+      </div>
+    </section>
+
+    <section id="regoPage" class="page hidden tw:min-h-0 tw:min-w-0 tw:h-full tw:overflow-hidden">
+      <div id="registrationAuth" class="registration-auth tw:flex tw:h-full tw:min-h-0 tw:items-center tw:justify-center">
+        <article class="card auth-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain" aria-label="Owner account">
+          <div class="auth-tabs" role="tablist" aria-label="Owner account access">
+            <button id="authLoginTab" type="button" class="tab-button active" role="tab" aria-selected="true" aria-controls="authLoginPanel">Login</button>
+            <button id="authCreateTab" type="button" class="tab-button" role="tab" aria-selected="false" aria-controls="authCreatePanel" tabindex="-1">Create account</button>
+          </div>
+          <div id="authLoginPanel" class="auth-panel tw:flex tw:flex-col" role="tabpanel" aria-labelledby="authLoginTab">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" autocomplete="username" placeholder="one@test.com">
+          <label for="loginPassword" class="field-gap">Password</label>
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Password">
+          <button id="loginOwner" type="button" class="button button-primary button-wide">Login</button>
+          </div>
+          <div id="authCreatePanel" class="auth-panel tw:flex tw:flex-col" role="tabpanel" aria-labelledby="authCreateTab" hidden>
+          <div class="two-field-grid">
+            <div>
+              <label for="registerForename">Forename</label>
+              <input autocomplete="given-name" id="registerForename" placeholder="Forename">
+            </div>
+            <div>
+              <label for="registerSurname">Surname</label>
+              <input autocomplete="family-name" id="registerSurname" placeholder="Surname">
+            </div>
+          </div>
+          <label for="registerEmail" class="field-gap">Email</label>
+          <input id="registerEmail" type="email" placeholder="name@example.com">
+          <label for="registerPassword" class="field-gap">Password</label>
+          <input id="registerPassword" autocomplete="new-password" type="password" placeholder="Password">
+          <button id="registerOwner" type="button" class="button button-outline button-wide">Create account</button>
+          </div>
+          <div id="registryAuthMessage" class="session-message compact-message" aria-live="polite"></div>
+        </article>
+      </div>
+
+      <div id="registrationDashboard" class="panel-workspace registry-workspace hidden tw:grid tw:h-full tw:min-h-0 tw:min-w-0 tw:grid-rows-[minmax(0,1fr)] tw:compact:grid-rows-[auto_minmax(0,1fr)] tw:compact:gap-2.5">
+        <div class="panel-tabs tw:hidden tw:compact:grid tw:grid-cols-3 tw:gap-1 tw:p-1" role="tablist" aria-label="Registration tools">
+          <button type="button" id="registryProfileTab" role="tab" aria-controls="registryProfilePanel" aria-selected="true">Profile</button>
+          <button type="button" id="registryVehiclesTab" role="tab" aria-controls="registryVehiclesPanel" aria-selected="false" tabindex="-1">My vehicles</button>
+          <button type="button" id="registryEditorTab" role="tab" aria-controls="registryEditorPanel" aria-selected="false" tabindex="-1">Vehicle details</button>
+        </div>
+        <div class="registration-dashboard tw:grid tw:h-full tw:min-h-0 tw:grid-cols-3 tw:grid-rows-[minmax(0,1fr)] tw:gap-[18px] tw:overflow-hidden tw:compact:grid-cols-1 tw:compact:gap-0">
+        <article id="registryProfilePanel" class="card profile-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
+          <div class="section-heading compact tw:grid tw:grid-cols-1">
+            <div>
+              <h2 id="ownerNameDisplay">Owner profile</h2>
+              <p id="ownerEmailDisplay">—</p>
+            </div>
+          </div>
+          <div class="divider"></div>
+
+          <div class="two-field-grid">
+            <div>
+              <label for="ownerForename">Forename</label>
+              <input id="ownerForename">
+            </div>
+            <div>
+              <label for="ownerSurname">Surname</label>
+              <input id="ownerSurname">
+            </div>
+          </div>
+          <label for="ownerEmail" class="field-gap">Email</label>
+          <input id="ownerEmail" type="email" disabled>
+          <div class="two-field-grid field-gap">
+            <div>
+              <label for="ownerAddressOne">Address line one</label>
+              <input id="ownerAddressOne" placeholder="Optional">
+            </div>
+            <div>
+              <label for="ownerAddressTwo">Address line two</label>
+              <input id="ownerAddressTwo" placeholder="Optional">
+            </div>
+          </div>
+          <div class="two-field-grid field-gap">
+            <div>
+              <label for="ownerPhone">Phone</label>
+              <input id="ownerPhone" inputmode="numeric" placeholder="Optional">
+            </div>
+            <div>
+              <label for="ownerPassword">Password</label>
+              <input id="ownerPassword" type="password">
+            </div>
+          </div>
+          <div class="split-actions">
+            <button id="saveOwnerProfile" type="button" class="button button-primary">Save profile</button>
+            <button id="removeOwnerProfile" type="button" class="button button-danger-outline">Remove account</button>
+          </div>
+          <div class="compact-feedback" data-feedback-source="registryMessage" aria-live="polite"></div>
+        </article>
+
+        <article id="registryVehiclesPanel" class="card vehicles-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
+          <div class="section-heading compact tw:grid tw:grid-cols-1">
+            <div>
+              <h2>My vehicles</h2>
+              
+            </div>
+          </div>
+          <div class="divider"></div>
+          <button id="newVehicle" type="button" class="button button-outline">+ Register new vehicle</button>
+          <div id="vehicleList" class="vehicle-list"></div>
+          <div id="registryMessage" class="session-message compact-message" aria-live="polite">Select a vehicle or register a new one.</div>
+        </article>
+
+        <article id="registryEditorPanel" class="card vehicle-editor-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
+          <div class="editor-topline">
+            <div class="section-heading compact tw:grid tw:grid-cols-1">
+              <div>
+                <h2 id="vehicleEditorTitle">Registration</h2>
+                <span id="vehicleEditorSubtitle" hidden></span>
+              </div>
+            </div>
+            <div class="editor-tabs" role="tablist" aria-label="Vehicle records">
+              <button id="vehicleDetailsTab" role="tab" aria-selected="true" aria-controls="vehicleDetailsPane" type="button" class="tab-button active">Vehicle</button>
+              <span id="vehiclehistTab" class="history-tab-state"><button id="vehicleHistTab" role="tab" aria-selected="false" aria-controls="vehiclehistPane" tabindex="-1" type="button" class="tab-button">WoF history</button></span>
+            </div>
+          </div>
+          <div class="divider"></div>
+
+          <div id="vehicleDetailsPane" role="tabpanel" aria-labelledby="vehicleDetailsTab" class="editor-pane">
+            <div class="three-field-grid">
+              <div>
+                <label for="regPlate">Plate</label>
+                <input id="regPlate" maxlength="6" placeholder="ABC123">
+              </div>
+              <div>
+                <label for="regMake">Make</label>
+                <input id="regMake" placeholder="FORD">
+              </div>
+              <div>
+                <label for="regModel">Model</label>
+                <input id="regModel" placeholder="MODEL T">
+              </div>
+            </div>
+            <div class="three-field-grid field-gap">
+              <div>
+                <label for="regManufactureDate">Manufacture date</label>
+                <input id="regManufactureDate" type="date">
+              </div>
+              <div>
+                <label for="regVehicleType">Vehicle type</label>
+                <select id="regVehicleType">
+                  <option>MA</option><option>MB</option><option>MC</option><option>T</option><option>O</option>
+                </select>
+              </div>
+              <div>
+                <label for="regFuelType">Fuel type</label>
+                <select id="regFuelType">
+                  <option>PETROL</option><option>DIESEL</option><option>ELECTRIC</option><option>GAS</option><option>OTHER</option><option>NA</option>
+                </select>
+              </div>
+            </div>
+            <div class="two-field-grid field-gap">
+              <div>
+                <label for="regAddressOne">Address line one</label>
+                <input id="regAddressOne" placeholder="Address line one">
+              </div>
+              <div>
+                <label for="regAddressTwo">Address line two</label>
+                <input id="regAddressTwo" placeholder="Address line two">
+              </div>
+            </div>
+            <div class="split-actions">
+              <button id="saveVehicle" type="button" class="button button-primary">Register vehicle</button>
+              <button id="removeVehicle" type="button" class="button button-danger-outline hidden">Remove vehicle</button>
+            </div>
+          </div>
+
+          <div id="vehiclehistPane" role="tabpanel" aria-labelledby="vehicleHistTab" class="editor-pane hidden">
+            <div id="histEmptyHint" class="history-hint">Select an existing vehicle before adding WoF history.</div>
+            <div class="three-field-grid">
+              <div class="span-two">
+                <label for="histVin">VIN</label>
+                <input id="histVin" maxlength="17" placeholder="17 characters">
+              </div>
+              <div>
+                <label for="histOdometer">Odometer</label>
+                <input id="histOdometer" inputmode="numeric" placeholder="999999">
+              </div>
+            </div>
+            <div class="three-field-grid field-gap">
+              <div>
+                <label for="histRegistrationDate">NZ registration</label>
+                <input id="histRegistrationDate" type="date">
+              </div>
+              <div>
+                <label for="histExpiry">WoF expiry</label>
+                <input id="histExpiry" type="date">
+              </div>
+              <div>
+                <label for="histStatus">Status</label>
+                <select id="histStatus"><option>PASSED</option><option>FAILED</option><option>EXPIRED</option></select>
+              </div>
+            </div>
+            <button id="saveHist" type="button" class="button button-primary button-wide">Save WoF history</button>
+          </div>
+          <div class="compact-feedback" data-feedback-source="registryMessage" aria-live="polite"></div>
+        </article>
+      </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
