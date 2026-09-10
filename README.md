@@ -17,9 +17,9 @@ password: two
 
 ## Original JavaFX GUI/CLI App Project Test Results
 
-<details><summary>SENG201 Christchurch International Airport Parking GUI Test Suite</summary>
-
-Unit test results are generated from a workflow run on a University of Canterbury JavaFX GUI project.
+<details><summary>SENG201 Christchurch International Airport Parking GUI/CLI Test Suite</summary>
+      
+> Unit test results are generated from a workflow run on a University of Canterbury JavaFX GUI/CLI project.
 
 | Test Status | Count |
 |---|---:|
@@ -156,9 +156,9 @@ Unit test results are generated from a workflow run on a University of Canterbur
 ```
 </details>
 
-<details><summary>SENG301 NZTA WoF Vehicle Registration GUI BDD Acceptance-Test</summary>
-
-Cucumber test results are generated from a workflow run on a University of Canterbury JavaFX GUI project.
+<details><summary>SENG301 NZTA WoF Vehicle Registration GUI/CLI BDD Acceptance-Test</summary>
+   
+> Cucumber test results are generated from a workflow run on a University of Canterbury JavaFX GUI/CLI project.
 
 | Scenario Status | Count |
 |---|---:|
@@ -466,3 +466,5 @@ Scenario: [PASS] Successfully remove existing vehicle registration(s) when the o
 
 ```
 </details>
+
+![chch_airport](https://github.com/user-attachments/assets/3112c1a4-3fad-46a9-97da-51a66a34d67b)
