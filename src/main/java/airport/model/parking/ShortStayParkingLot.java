@@ -34,7 +34,7 @@ public class ShortStayParkingLot extends AbstractParkingLot implements ParkingLo
 		final long MINIMUM_PRICE = 12; // constant price charged for parking between initial period of 0-2 hours
 		final long HOUR_PRICE = 8; // constant price charged for each additional hour parked after initial period
 		final long DAY_ONE_THREE_HOURS_CHARGE = 20; // constant price charged for first 3 hours of parking on first day
-		final long DAY_CHARGE = 25; // constant of maximum price charged for every 24 hour period of continuous
+		final long DAY_CHARGE = 25; // constant of maximum price charged for every 24-hour period of continuous
 									// parking
 		long charge = 0; // default for incrementing parking charges
 

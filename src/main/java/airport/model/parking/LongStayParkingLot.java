@@ -31,10 +31,10 @@ public class LongStayParkingLot extends AbstractParkingLot implements ParkingLot
 	 * @return The cost of parking here.
 	 */
 	public Money computeCharge(HashMap<String, Long> duration) {
-		final long DAY_PRICE = 25; // constant of maximum price charged for each 24 hour period of continuous
+		final long DAY_PRICE = 25; // constant of maximum price charged for each 24-hour period of continuous
 									// parking
-		final long HOUR_PRICE = 8; // constant price charged for each hour after initial 24 hour period
-		final long WEEK_PRICE = 125; // constant of maximum price charged for each 7 day period of continuous parking
+		final long HOUR_PRICE = 8; // constant price charged for each hour after initial 24-hour period
+		final long WEEK_PRICE = 125; // constant of maximum price charged for each 7-day period of continuous parking
 		long charge = 0; // default for incrementing parking charges
 
 		if ((duration.get(ParkingLotEnum.MINS.getValue()) % HOUR_MINUTES) > 0) { // checks if minutes is above zero

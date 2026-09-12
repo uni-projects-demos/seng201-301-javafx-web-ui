@@ -1,17 +1,31 @@
 import { watch } from "node:fs";
+import { resolve } from "node:path";
 import { context } from "esbuild";
-import { buildStyles, compileJava, copyHtml, copyRuntime, runBuild, runChecks } from "./build.mjs";
+import {
+  buildStyles,
+  compileJava,
+  copyHtml,
+  copyRuntime,
+  projectRoot,
+  runBuild,
+  runChecks,
+} from "./build.mjs";
 
 await runBuild({ cleanJava: false });
 const ctx = await context({
-  entryPoints: ["src/main/web/bootstrap.ts"],
+  absWorkingDir: projectRoot,
+  entryPoints: [resolve(projectRoot, "src/main/web/bootstrap.ts")],
   bundle: true,
   format: "esm",
   target: "es2022",
-  outfile: "dist/app.js",
+  outfile: resolve(projectRoot, "dist/app.js"),
 });
 await ctx.rebuild();
-const { port } = await ctx.serve({ servedir: "dist", host: "127.0.0.1", port: 8080 });
+const { port } = await ctx.serve({
+  servedir: resolve(projectRoot, "dist"),
+  host: "127.0.0.1",
+  port: 8080,
+});
 console.log(`Server running: http://localhost:${port}\nRefresh after a successful rebuild.`);
 
 let javaPending = false;
@@ -54,8 +68,8 @@ function schedule(javaChanged) {
   timer = setTimeout(rebuild, 150);
 }
 const watchers = [
-  watch("src/main/web", { recursive: true }, () => schedule(false)),
-  watch("src/main/java", { recursive: true }, (_, file) => {
+  watch(resolve(projectRoot, "src/main/web"), { recursive: true }, () => schedule(false)),
+  watch(resolve(projectRoot, "src/main/java"), { recursive: true }, (_, file) => {
     if (file?.endsWith(".java")) schedule(true);
   }),
 ];

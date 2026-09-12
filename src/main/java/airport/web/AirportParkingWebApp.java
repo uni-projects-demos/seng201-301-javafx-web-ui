@@ -42,7 +42,7 @@ public final class AirportParkingWebApp {
 	private final LegacyEngine legacy = new LegacyEngine();
 	private final ModernEngine modern = new ModernEngine();
 
-	public static void main(String[] args) {
+	static void main() {
 		new AirportParkingWebApp().start();
 	}
 
@@ -64,7 +64,9 @@ public final class AirportParkingWebApp {
 		onClick("versionLegacy", () -> switchMode(AppMode.LEGACY));
 		onClick("versionModern", () -> switchMode(AppMode.MODERN));
 		onEnter("vehicleReg", this::checkIn);
-		onInput("vehicleReg", this::refreshVehicleRegistration);
+		onInput("vehicleReg", this::vehicleRegChanged);
+		onClick("vehicleRegToggle", this::toggleVehicleRegMenu);
+		onDataClick("vehicleRegMenu", "plate", this::selectGateVehicle);
 		onChange("quoteParkingLot", this::refreshRateSummary);
 		onChange("gateParkingLot", this::refreshHeaderStats);
 
@@ -119,6 +121,7 @@ public final class AirportParkingWebApp {
 		setVisible("registrationDashboard", isLoggedIn);
 		setVisible("logoutOwner", isLoggedIn);
 		text("registrySessionBadge", isLoggedIn ? email : "Signed out");
+		refreshGateVehicleChoices();
 		if (!isLoggedIn) {
 			selectedVehiclePlate = "";
 			return;
@@ -295,9 +298,9 @@ public final class AirportParkingWebApp {
 
 	private void showVehicleEditorTab(boolean hasHist) {
 		setVisible("vehicleDetailsPane", !hasHist);
-		setVisible("vehiclehistPane", hasHist);
+		setVisible("vehicleHistPane", hasHist);
 		setActiveButton("vehicleDetailsTab", !hasHist);
-		setActiveButton("vehiclehistTab", hasHist);
+		setActiveButton("vehicleHistTab", hasHist);
 	}
 
 	private void saveRegistrationVehicle() {
@@ -352,6 +355,7 @@ public final class AirportParkingWebApp {
 			setRegistryMessage(selectedVehiclePlate + " registration saved.", "success");
 		}
 		selectRegistrationVehicle(selectedVehiclePlate);
+		refreshGateVehicleChoices();
 		refreshVehicleRegistration();
 	}
 
@@ -367,6 +371,7 @@ public final class AirportParkingWebApp {
 		isRegDeleteVehicle(email, plate);
 		selectedVehiclePlate = "";
 		newVehicle();
+		refreshGateVehicleChoices();
 		refreshVehicleRegistration();
 		setRegistryMessage(plate + " removed from the registry.", "success");
 	}
@@ -492,6 +497,7 @@ public final class AirportParkingWebApp {
 		updateCapacities();
 		text("quoteTotal", "—");
 		text("quoteDuration", newMode == AppMode.LEGACY ? "Use legacy rates." : "Use current rates.");
+		refreshGateVehicleChoices();
 		refreshVehicleRegistration();
 		setMessage(
 				newMode == AppMode.LEGACY
@@ -533,6 +539,7 @@ public final class AirportParkingWebApp {
 	}
 
 	private void checkIn() {
+		setVehicleRegMenuOpen(false);
 		ParkingEngine engine = engine();
 		String reg = normalizedRegistration();
 		if (!isValidRegistration(reg, engine) || !isRequireRegisteredVehicle(reg)) {
@@ -543,11 +550,14 @@ public final class AirportParkingWebApp {
 		setMessage(result.message, result.type);
 		if (result.isOk) {
 			updateCapacities();
+			refreshVehicleRegistration();
+			refreshGateVehicleChoices();
 			refreshHeaderStats();
 		}
 	}
 
 	private void checkOut() {
+		setVehicleRegMenuOpen(false);
 		ParkingEngine engine = engine();
 		String reg = normalizedRegistration();
 		if (!isValidRegistration(reg, engine) || !isRequireRegisteredVehicle(reg)) {
@@ -557,6 +567,8 @@ public final class AirportParkingWebApp {
 		setMessage(result.message, result.type);
 		if (result.isOk) {
 			updateCapacities();
+			refreshVehicleRegistration();
+			refreshGateVehicleChoices();
 			refreshHeaderStats();
 		}
 	}
@@ -610,6 +622,68 @@ public final class AirportParkingWebApp {
 		setHtml(selectId, html.toString());
 	}
 
+	private void vehicleRegChanged() {
+		setVehicleRegMenuOpen(false);
+		refreshVehicleRegistration();
+	}
+
+	private void toggleVehicleRegMenu() {
+		setVehicleRegMenuOpen(isVehicleRegMenuClosed());
+	}
+
+	private void refreshGateVehicleChoices() {
+		String email = regCurrentUserEmail();
+		if (email == null || email.isEmpty()) {
+			setHtml("vehicleRegMenu", "");
+			setVisible("vehicleRegToggle", false);
+			setVehicleRegMenuOpen(false);
+			return;
+		}
+
+		String[] plates = regoStore.currentUserVehiclePlates();
+		setVisible("vehicleRegToggle", plates.length > 0);
+		if (plates.length == 0) {
+			setHtml("vehicleRegMenu", "");
+			setVehicleRegMenuOpen(false);
+			return;
+		}
+
+		StringBuilder html = new StringBuilder();
+		for (String plate : plates) {
+			String make = registeredVehicleField(plate, "make");
+			String model = registeredVehicleField(plate, "model");
+			String parkedLotId = engine().parkedLotId(plate);
+			boolean parked = parkedLotId != null && !parkedLotId.isEmpty();
+			html.append("<button type=\"button\" role=\"menuitem\" class=\"vehicle-reg-choice")
+					.append(parked ? " parked" : "").append("\" data-plate=\"").append(escapeHtmlAttribute(plate))
+					.append("\"><span class=\"vehicle-plate\">").append(escapeHtml(plate))
+					.append("</span><span class=\"vehicle-name\">").append(escapeHtml((make + " " + model).trim()))
+					.append("</span>");
+			if (parked) {
+				html.append("<span class=\"vehicle-reg-choice-lot\">")
+						.append(escapeHtml(engine().displayName(parkedLotId))).append("</span>");
+			}
+			html.append("</button>");
+		}
+		setHtml("vehicleRegMenu", html.toString());
+	}
+
+	private void selectGateVehicle(String plate) {
+		if (plate == null || plate.isEmpty())
+			return;
+		setValue("vehicleReg", plate.toUpperCase());
+		setVehicleRegMenuOpen(false);
+		refreshVehicleRegistration();
+	}
+
+	private void syncGateLotToParkedVehicle(String reg) {
+		String parkedLotId = engine().parkedLotId(reg);
+		if (parkedLotId == null || parkedLotId.isEmpty())
+			return;
+		setValue("gateParkingLot", parkedLotId);
+		refreshHeaderStats();
+	}
+
 	private String normalizedRegistration() {
 		String reg = value("vehicleReg");
 		return reg == null ? "" : reg.trim().toUpperCase();
@@ -628,6 +702,20 @@ public final class AirportParkingWebApp {
 		return true;
 	}
 
+	private void updateVehicleCheckin(String fuel, String detail, String reg) {
+		if (!fuel.isEmpty()) {
+			detail += " · " + fuel;
+		}
+		String parkedLotId = engine().parkedLotId(reg);
+		if (parkedLotId != null && !parkedLotId.isEmpty()) {
+			syncGateLotToParkedVehicle(reg);
+			detail = reg + " is already checked in to " + engine().displayName(parkedLotId) + ".";
+			showVehicleRegistration(true, true, "Registered vehicle", detail);
+		} else {
+			showVehicleRegistration(true, false, "Registered vehicle", detail);
+		}
+	}
+
 	private boolean isRequireRegisteredVehicle(String reg) {
 		if (!isRegisteredVehicleExists(reg)) {
 			showVehicleRegistration(false, reg + " is not registered",
@@ -639,10 +727,7 @@ public final class AirportParkingWebApp {
 		String model = registeredVehicleField(reg, "model");
 		String fuel = registeredVehicleField(reg, "fuelType");
 		String detail = make + (model.isEmpty() ? "" : " " + model);
-		if (!fuel.isEmpty()) {
-			detail += " · " + fuel;
-		}
-		showVehicleRegistration(true, "Registered vehicle", detail);
+		updateVehicleCheckin(fuel, detail, reg);
 		return true;
 	}
 
@@ -668,16 +753,20 @@ public final class AirportParkingWebApp {
 		String detail = make + (model.isEmpty() ? "" : " " + model);
 		if (!type.isEmpty())
 			detail += " · " + type;
-		if (!fuel.isEmpty())
-			detail += " · " + fuel;
-		showVehicleRegistration(true, "Registered vehicle", detail);
+		updateVehicleCheckin(fuel, detail, reg);
 	}
 
 	private void showVehicleRegistration(boolean isRegistered, String title, String detail) {
+		showVehicleRegistration(isRegistered, false, title, detail);
+	}
+
+	private void showVehicleRegistration(boolean isRegistered, boolean isParked, String title, String detail) {
 		text("registrationStatusTitle", title);
 		text("registrationStatusDetail", detail);
 		setClassName("registrationStatus",
-				isRegistered ? "registration-status registered" : "registration-status unregistered");
+				isParked
+						? "registration-status parked"
+						: isRegistered ? "registration-status registered" : "registration-status unregistered");
 	}
 
 	private LocalDateTime readDateTime(String id, String label) {
@@ -742,6 +831,7 @@ public final class AirportParkingWebApp {
 		CapacityInfo[] capacities();
 		CapacityInfo capacityFor(String lotId);
 		boolean isValidRegistration(String reg);
+		String parkedLotId(String reg);
 		String displayName(String lotId);
 		String rateSummary(String lotId);
 	}
@@ -871,6 +961,13 @@ public final class AirportParkingWebApp {
 		@Override
 		public boolean isValidRegistration(String reg) {
 			return nosy.vehicleRegistrationIsValid(reg);
+		}
+
+		@Override
+		public String parkedLotId(String reg) {
+			nosy.setVehicle(reg);
+			ParkingLot lot = nosy.getVehicle().getParkingLot();
+			return lot == null ? "" : lot.toString();
 		}
 
 		@Override
@@ -1115,6 +1212,12 @@ public final class AirportParkingWebApp {
 		}
 
 		@Override
+		public String parkedLotId(String reg) {
+			Session session = activeSessions.get(reg);
+			return session == null ? "" : session.lot.id;
+		}
+
+		@Override
 		public String displayName(String lotId) {
 			ModernLot lot = lots.get(lotId);
 			return lot == null ? lotId : lot.label;
@@ -1172,6 +1275,13 @@ public final class AirportParkingWebApp {
 	private interface StringCallback extends JSObject {
 		void run(String value);
 	}
+
+	@JSBody(script = "var m=document.getElementById('vehicleRegMenu'); return !m || m.classList.contains('hidden');")
+	private static native boolean isVehicleRegMenuClosed();
+
+	@JSBody(params = {
+			"open"}, script = "var m=document.getElementById('vehicleRegMenu'),b=document.getElementById('vehicleRegToggle'); if(!m||!b)return; if(b.classList.contains('hidden'))open=false; m.classList.toggle('hidden',!open); b.setAttribute('aria-expanded',String(open));")
+	private static native void setVehicleRegMenuOpen(boolean open);
 
 	@JSBody(params = {"id", "callback"}, script = "document.getElementById(id).addEventListener('click', callback);")
 	private static native void onClick(String id, Callback callback);

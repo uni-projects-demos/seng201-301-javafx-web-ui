@@ -48,6 +48,17 @@ public final class RegistrationWebController {
 		return wof.getUser() == null ? "" : wof.getUser().getEmail();
 	}
 
+	public String[] currentUserVehiclePlates() {
+		if (wof.getUser() == null)
+			return new String[0];
+		List<Vehicle> list = new ArrayList<>(wof.getUser().getVehicles());
+		list.sort(Comparator.comparing(Vehicle::getPlate));
+		String[] plates = new String[list.size()];
+		for (int i = 0; i < list.size(); i++)
+			plates[i] = list.get(i).getPlate();
+		return plates;
+	}
+
 	public boolean login(String email, String password) {
 		try {
 			return owners.login(email, password);

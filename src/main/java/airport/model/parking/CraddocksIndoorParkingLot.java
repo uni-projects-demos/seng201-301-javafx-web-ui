@@ -31,7 +31,7 @@ public class CraddocksIndoorParkingLot extends AbstractParkingLot implements Par
 	 * @return The cost of parking here.
 	 */
 	public Money computeCharge(HashMap<String, Long> duration) {
-		final long DAY_MINUTES = 1440; // constant variable for the amount of minutes in a 24 hour day
+		final long DAY_MINUTES = 1440; // constant variable for the amount of minutes in a 24-hour day
 		final long FIRST_THREE_DAYS_DAILY_PRICE = 30;
 		final long AFTER_THREE_DAYS_DAILY_PRICE = 10;
 		long charge = 0; // default for incrementing parking charges

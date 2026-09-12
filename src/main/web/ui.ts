@@ -1,4 +1,5 @@
 import { element, itemAt } from "./dom.ts";
+import { sourceText } from "./i18n/preferences.ts";
 
 ((): void => {
   const title: HTMLElement = element("pageTitle");
@@ -46,7 +47,7 @@ import { element, itemAt } from "./dom.ts";
   element("logoutOwner").addEventListener("click", (): void => activate(itemAt(tabs, 0)));
   const duration: HTMLElement = element("quoteDuration");
   function updateDuration(): void {
-    const text: string = duration.textContent?.trim() ?? "";
+    const text: string = sourceText(duration).trim();
     duration.hidden =
       !text ||
       [
@@ -161,7 +162,7 @@ import { element, itemAt } from "./dom.ts";
   }
 })();
 
-const historyState: HTMLElement = element("vehiclehistTab");
+const historyState: HTMLElement = element("vehicleHistTabState");
 const historyTab: HTMLElement = element("vehicleHistTab");
 const detailsTab: HTMLElement = element("vehicleDetailsTab");
 function syncHistoryTab(): void {

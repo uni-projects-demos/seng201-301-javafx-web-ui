@@ -19,7 +19,8 @@
     "newLine": "lf",
     "sourceMap": false,
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
   },
   "include": [
     "src/main/web/**/*.ts"

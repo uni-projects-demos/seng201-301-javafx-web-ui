@@ -6,18 +6,20 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { compile } from "tailwindcss";
+import { checkLocales } from "./check-locales.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
+export const projectRoot = resolve(root, "..");
 process.chdir(root);
 const require = createRequire(import.meta.url);
 
 function runMaven(args) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolvePromise, reject) => {
     const windows = process.platform === "win32";
     const child = spawn(
       windows ? "cmd.exe" : "mvn",
       windows ? ["/d", "/s", "/c", `mvn.cmd ${args.join(" ")}`] : args,
-      { cwd: root, stdio: "inherit" },
+      { cwd: projectRoot, stdio: "inherit" },
     );
     child.on("error", (error) =>
       reject(
@@ -27,15 +29,17 @@ function runMaven(args) {
       ),
     );
     child.on("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`Maven failed (${code}); check the output above.`)),
+      code === 0
+        ? resolvePromise()
+        : reject(new Error(`Maven failed (${code}); check the output above.`)),
     );
   });
 }
 
 export function checkDom() {
   const read = (path) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8");
-  const html = read("./src/main/web/index.html");
-  const java = read("./src/main/java/airport/web/AirportParkingWebApp.java");
+  const html = read("../src/main/web/index.html");
+  const java = read("../src/main/java/airport/web/AirportParkingWebApp.java");
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   const unique = new Set(ids);
   const problems = [];
@@ -58,7 +62,8 @@ export function checkDom() {
 
 export function runChecks() {
   checkDom();
-  const result = spawnSync(process.execPath, ["node_modules/typescript/bin/tsc", "--noEmit"], {
+  checkLocales();
+  const result = spawnSync(process.execPath, ["../node_modules/typescript/bin/tsc", "--noEmit"], {
     cwd: root,
     stdio: "inherit",
   });
@@ -67,28 +72,28 @@ export function runChecks() {
 }
 
 export async function compileJava(clean = false) {
-  // Never accept a leftover TeaVM bundle as evidence of a successful build.
-  await rm("target/javascript", { recursive: true, force: true });
+  await rm("../target/javascript", { recursive: true, force: true });
   await runMaven(clean ? ["-B", "clean", "process-classes"] : ["-B", "process-classes"]);
   await requireRuntime();
 }
 
 async function requireRuntime() {
-  const path = "target/javascript/airport-parking.js";
+  const path = "../target/javascript/airport-parking.js";
   if (!(await stat(path)).size) throw new Error(`TeaVM generated an empty ${path}`);
 }
 
 export async function copyRuntime() {
   await requireRuntime();
-  await copyFile("target/javascript/airport-parking.js", "dist/airport-parking.js");
+  await copyFile("../target/javascript/airport-parking.js", "../dist/airport-parking.js");
 }
 
 export async function copyHtml() {
-  await copyFile("src/main/web/index.html", "dist/index.html");
+  await copyFile("../src/main/web/index.html", "../dist/index.html");
 }
 
 export async function buildStyles() {
-  const html = await readFile("src/main/web/index.html", "utf8");
+  const html = await readFile(resolve(projectRoot, "src/main/web/index.html"), "utf8");
+
   const candidates = [
     ...new Set(
       [...html.matchAll(/class="([^"]*)"/g)]
@@ -97,13 +102,20 @@ export async function buildStyles() {
     ),
   ];
 
-  const input = resolve("src/main/web/style.css");
+  const input = resolve(projectRoot, "src/main/web/style.css");
+
   const compiler = await compile(await readFile(input, "utf8"), {
     base: dirname(input),
     from: input,
+
     async loadStylesheet(id, base) {
       const path = id.startsWith(".") ? resolve(base, id) : require.resolve(id);
-      return { path, base: dirname(path), content: await readFile(path, "utf8") };
+
+      return {
+        path,
+        base: dirname(path),
+        content: await readFile(path, "utf8"),
+      };
     },
   });
 
@@ -113,11 +125,13 @@ export async function buildStyles() {
         '@import "@awesome.me/webawesome/dist/styles/themes/default.css";\n' +
         compiler.build(candidates),
       loader: "css",
-      resolveDir: root,
+      resolveDir: projectRoot,
     },
+
     bundle: true,
     minify: true,
-    outfile: "dist/style.css",
+
+    outfile: resolve(projectRoot, "dist/style.css"),
   });
 }
 
@@ -127,21 +141,21 @@ export async function runBuild({ cleanJava = true } = {}) {
   console.log("==> Compiling Java / TeaVM...");
   await compileJava(cleanJava);
 
-  await rm("dist", { recursive: true, force: true });
-  await mkdir("dist", { recursive: true });
+  await rm("../dist", { recursive: true, force: true });
+  await mkdir("../dist", { recursive: true });
 
   await buildStyles();
 
   await build({
-    entryPoints: ["src/main/web/bootstrap.ts"],
+    absWorkingDir: projectRoot,
+    entryPoints: [resolve(projectRoot, "src/main/web/bootstrap.ts")],
     bundle: true,
     format: "esm",
     target: "es2022",
     minify: true,
     legalComments: "inline",
-    outfile: "dist/app.js",
+    outfile: resolve(projectRoot, "dist/app.js"),
   });
-
   await copyHtml();
   await copyRuntime();
 
@@ -155,8 +169,8 @@ export async function runBuild({ cleanJava = true } = {}) {
       }
     }
   }
-  await licenses("node_modules");
-  await writeFile("dist/THIRD_PARTY_LICENSES.txt", notices.join("\n\n---\n\n"));
+  await licenses("../node_modules");
+  await writeFile("../dist/THIRD_PARTY_LICENSES.txt", notices.join("\n\n---\n\n"));
 
   console.log("==> Built dist/ successfully.");
 }
@@ -168,7 +182,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       ? async () => runChecks()
       : command === "--clean"
         ? async () => {
-            await rm("dist", { recursive: true, force: true });
+            await rm("../dist", { recursive: true, force: true });
             await runMaven(["clean"]);
           }
         : runBuild;

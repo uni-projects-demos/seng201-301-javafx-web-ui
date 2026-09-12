@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>let t; try { t=localStorage.getItem("seng-theme"); document.documentElement.dataset.theme=t==="dark"||t==="light"?t:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"; } catch (_) { document.documentElement.dataset.theme=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"; }</script>
   <meta name="theme-color" content="#142c3e">
   <title>Airport Parking + Vehicle Registration</title>
   <link rel="stylesheet" href="style.css">
@@ -46,6 +47,18 @@
         </div>
       </div>
       </div>
+      <div class="preferences">
+        <button id="themeToggle" type="button" class="icon-button" aria-label="Dark mode" title="Dark mode" aria-pressed="false">
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20.5 13A8.5 8.5 0 0 1 11 3.5 8.5 8.5 0 1 0 20.5 13Z"/></svg>
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+        </button>
+        <button id="languageToggle" type="button" class="icon-button" aria-label="Language" title="Language" aria-expanded="false" aria-controls="languageDialog" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/></svg><span id="localeCode" translate="no">EN</span>
+        </button>
+        <a id="githubLink" class="icon-button" href="https://github.com/uni-projects-demos/seng201-301-javafx-web-ui" target="_blank" rel="noopener noreferrer" aria-label="GitHub repository" title="GitHub repository">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38v-1.49c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.65 7.65 0 0 1 8 3.72c.68 0 1.36.09 2 .27 1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.74.54 1.48v2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        </a>
+      </div>
     </header>
 
     <section id="parkingPage" class="page tw:min-h-0 tw:min-w-0 tw:h-full tw:overflow-hidden">
@@ -55,7 +68,7 @@
         <button type="button" id="parkingGateTab" role="tab" aria-controls="parkingGatePanel" aria-selected="false" tabindex="-1">Gate</button>
         <button type="button" id="parkingCapacityTab" role="tab" aria-controls="parkingCapacityPanel" aria-selected="false" tabindex="-1">Capacity</button>
       </div>
-      <div class="desktop-grid tw:grid tw:h-full tw:min-h-0 tw:grid-cols-3 tw:grid-rows-[minmax(0,1fr)] tw:gap-[18px] tw:overflow-hidden tw:compact:grid-cols-1 tw:compact:gap-0">
+      <div class="desktop-grid tw:grid tw:h-full tw:min-h-0 tw:grid-cols-3 tw:grid-rows-[minmax(0,1fr)] tw:gap-4.5 tw:overflow-hidden tw:compact:grid-cols-1 tw:compact:gap-0">
         <article id="parkingPlanPanel" class="card quote-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
           <div class="section-heading compact tw:grid tw:grid-cols-1">
             <div>
@@ -107,7 +120,13 @@
           <div class="divider"></div>
 
           <label for="vehicleReg">Registration</label>
-          <input id="vehicleReg" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ABC123">
+          <div id="vehicleRegPicker" class="vehicle-reg-picker">
+            <input id="vehicleReg" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="e.g. ABC123">
+            <button id="vehicleRegToggle" type="button" class="vehicle-reg-toggle hidden" aria-label="My vehicles" aria-haspopup="menu" aria-controls="vehicleRegMenu" aria-expanded="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
+            </button>
+            <div id="vehicleRegMenu" class="vehicle-reg-menu hidden" role="menu" aria-label="My vehicles"></div>
+          </div>
 
           <div id="registrationStatus" class="registration-status unregistered" aria-live="polite">
             <span class="registration-mark" aria-hidden="true"></span>
@@ -190,7 +209,7 @@
           <button type="button" id="registryVehiclesTab" role="tab" aria-controls="registryVehiclesPanel" aria-selected="false" tabindex="-1">My vehicles</button>
           <button type="button" id="registryEditorTab" role="tab" aria-controls="registryEditorPanel" aria-selected="false" tabindex="-1">Vehicle details</button>
         </div>
-        <div class="registration-dashboard tw:grid tw:h-full tw:min-h-0 tw:grid-cols-3 tw:grid-rows-[minmax(0,1fr)] tw:gap-[18px] tw:overflow-hidden tw:compact:grid-cols-1 tw:compact:gap-0">
+        <div class="registration-dashboard tw:grid tw:h-full tw:min-h-0 tw:grid-cols-3 tw:grid-rows-[minmax(0,1fr)] tw:gap-4.5 tw:overflow-hidden tw:compact:grid-cols-1 tw:compact:gap-0">
         <article id="registryProfilePanel" class="card profile-card tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-y-auto tw:overflow-x-hidden tw:overscroll-y-contain">
           <div class="section-heading compact tw:grid tw:grid-cols-1">
             <div>
@@ -262,7 +281,7 @@
             </div>
             <div class="editor-tabs" role="tablist" aria-label="Vehicle records">
               <button id="vehicleDetailsTab" role="tab" aria-selected="true" aria-controls="vehicleDetailsPane" type="button" class="tab-button active">Vehicle</button>
-              <span id="vehiclehistTab" class="history-tab-state"><button id="vehicleHistTab" role="tab" aria-selected="false" aria-controls="vehiclehistPane" tabindex="-1" type="button" class="tab-button">WoF history</button></span>
+              <span id="vehicleHistTabState" class="history-tab-state"><button id="vehicleHistTab" role="tab" aria-selected="false" aria-controls="vehicleHistPane" tabindex="-1" type="button" class="tab-button">WoF history</button></span>
             </div>
           </div>
           <div class="divider"></div>
@@ -290,13 +309,13 @@
               <div>
                 <label for="regVehicleType">Vehicle type</label>
                 <select id="regVehicleType">
-                  <option>MA</option><option>MB</option><option>MC</option><option>T</option><option>O</option>
+                  <option value="MA">MA</option><option value="MB">MB</option><option value="MC">MC</option><option value="T">T</option><option value="O">O</option>
                 </select>
               </div>
               <div>
                 <label for="regFuelType">Fuel type</label>
                 <select id="regFuelType">
-                  <option>PETROL</option><option>DIESEL</option><option>ELECTRIC</option><option>GAS</option><option>OTHER</option><option>NA</option>
+                  <option value="PETROL">PETROL</option><option value="DIESEL">DIESEL</option><option value="ELECTRIC">ELECTRIC</option><option value="GAS">GAS</option><option value="OTHER">OTHER</option><option value="NA">NA</option>
                 </select>
               </div>
             </div>
@@ -316,7 +335,7 @@
             </div>
           </div>
 
-          <div id="vehiclehistPane" role="tabpanel" aria-labelledby="vehicleHistTab" class="editor-pane hidden">
+          <div id="vehicleHistPane" role="tabpanel" aria-labelledby="vehicleHistTab" class="editor-pane hidden">
             <div id="histEmptyHint" class="history-hint">Select an existing vehicle before adding WoF history.</div>
             <div class="three-field-grid">
               <div class="span-two">
@@ -339,7 +358,7 @@
               </div>
               <div>
                 <label for="histStatus">Status</label>
-                <select id="histStatus"><option>PASSED</option><option>FAILED</option><option>EXPIRED</option></select>
+                <select id="histStatus"><option value="PASSED">PASSED</option><option value="FAILED">FAILED</option><option value="EXPIRED">EXPIRED</option></select>
               </div>
             </div>
             <button id="saveHist" type="button" class="button button-primary button-wide">Save WoF history</button>
@@ -350,5 +369,12 @@
       </div>
     </section>
   </main>
+  <dialog id="languageDialog" aria-labelledby="languageHeading">
+    <div class="language-heading"><h2 id="languageHeading">Language</h2><button id="closeLanguage" type="button" class="dialog-close" aria-label="Close">×</button></div>
+    <label for="languageSearch">Search languages</label>
+    <input id="languageSearch" type="search" autocomplete="off" spellcheck="false" aria-controls="languageOptions">
+    <div id="languageOptions" class="language-options" translate="no"></div>
+    <p id="languageEmpty" hidden>No languages found</p>
+  </dialog>
 </body>
 </html>

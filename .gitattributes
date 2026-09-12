@@ -1,2 +1,1 @@
-build.mjs text eol=lf
-dev.mjs text eol=lf
+scripts/*.mjs text eol=lf linguist-detectable=false

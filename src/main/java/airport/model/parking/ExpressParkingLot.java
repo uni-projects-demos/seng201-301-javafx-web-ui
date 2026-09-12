@@ -35,9 +35,9 @@ public class ExpressParkingLot extends AbstractParkingLot implements ParkingLot 
 		final long SIXTEEN_TO_FORTY_MINUTES_PRICE = 4; // constant price charged for parking between 16 and 40 minutes
 		final long HOUR_PRICE = 8; // constant price charged for each hour of parking until the daily/weekly max
 									// price
-		final long DAY_PRICE = 32; // constant of maximum price charged for each 24 hour period of continuous
+		final long DAY_PRICE = 32; // constant of maximum price charged for each 24-hour period of continuous
 									// parking
-		final long WEEK_PRICE = 160; // constant of maximum price charged for each 7 day period of continuous parking
+		final long WEEK_PRICE = 160; // constant of maximum price charged for each 7-day period of continuous parking
 		long charge = 0; // default for incrementing parking charges
 
 		if ((duration.get(ParkingLotEnum.MINS.getValue()) % HOUR_MINUTES) > 0) { // checks minutes is above zero
