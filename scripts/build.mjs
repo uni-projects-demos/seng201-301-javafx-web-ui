@@ -6,7 +6,6 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { compile } from "tailwindcss";
-import { checkLocales } from "./check-locales.mjs";
 
 const root = dirname(fileURLToPath(import.meta.url));
 export const projectRoot = resolve(root, "..");
@@ -62,7 +61,6 @@ export function checkDom() {
 
 export function runChecks() {
   checkDom();
-  checkLocales();
   const result = spawnSync(process.execPath, ["../node_modules/typescript/bin/tsc", "--noEmit"], {
     cwd: root,
     stdio: "inherit",

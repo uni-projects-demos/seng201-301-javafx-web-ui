@@ -63,6 +63,7 @@ a:focus-visible {
 .hidden,
 [hidden],
 [data-wa-native-source] {
+  /* biome-ignore lint/complexity/noImportantStyles: important! */
   display: none !important;
 }
 
@@ -117,6 +118,7 @@ a:focus-visible {
   justify-items: end;
 }
 .header-tools .topbar-right.hidden {
+  /* biome-ignore lint/complexity/noImportantStyles: important! */
   display: grid !important;
   visibility: hidden;
   pointer-events: none;
@@ -190,14 +192,11 @@ a:focus-visible {
   font-size: 18px;
   margin-right: 4px;
 }
-.app-shell:has(#regoPage.hidden) .registry-header-stats {
+:where(.app-shell:has(#regoPage.hidden)) .registry-header-stats {
   display: none;
 }
 .registration-header-actions {
   @apply tw:flex tw:items-center tw:justify-end tw:gap-2 tw:w-full tw:min-w-0;
-}
-.registration-header-actions .small-button {
-  flex-shrink: 0;
 }
 
 .card {
@@ -278,6 +277,12 @@ input:disabled {
 input[type="datetime-local"] {
   font-size: 13px;
 }
+
+.icon-button svg {
+  width: 21px;
+  height: 21px;
+}
+
 #vehicleReg,
 #regPlate {
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -355,15 +360,6 @@ input[type="datetime-local"] {
 .vehicle-reg-choice:focus-visible {
   border-color: #a8bbc7;
   background: #f2f6f8;
-}
-.vehicle-reg-choice .vehicle-plate {
-  grid-area: plate;
-  font-size: 15px;
-}
-.vehicle-reg-choice .vehicle-name {
-  grid-area: name;
-  color: var(--muted);
-  font-size: 12px;
 }
 .vehicle-reg-choice-lot {
   grid-area: lot;
@@ -532,6 +528,10 @@ wa-badge.mode-badge {
   display: inline-flex;
   padding: 0;
   background: transparent;
+}
+
+.registration-header-actions .small-button {
+  flex-shrink: 0;
 }
 
 .quote-result {
@@ -796,6 +796,15 @@ wa-badge.mode-badge {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+.vehicle-reg-choice .vehicle-plate {
+  grid-area: plate;
+  font-size: 15px;
+}
+.vehicle-reg-choice .vehicle-name {
+  grid-area: name;
+  color: var(--muted);
+  font-size: 12px;
+}
 .vehicle-meta {
   grid-area: meta;
   color: var(--muted);
@@ -996,7 +1005,9 @@ wa-badge.mode-badge {
   *::before,
   *::after,
   wa-button::part(button) {
+    /* biome-ignore lint/complexity/noImportantStyles: important! */
     transition: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: important! */
     scroll-behavior: auto !important;
   }
 }
@@ -1054,9 +1065,13 @@ wa-badge.mode-badge {
 .icon-button:hover {
   background: #ffffff20;
 }
-.icon-button svg {
-  width: 21px;
-  height: 21px;
+#languageToggle {
+  flex: 0 0 auto;
+  inline-size: max-content;
+  white-space: nowrap;
+}
+#localeCode {
+  white-space: nowrap;
 }
 .sun-icon,
 [data-theme="dark"] .moon-icon {

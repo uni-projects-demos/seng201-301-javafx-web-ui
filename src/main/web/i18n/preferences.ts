@@ -1,8 +1,25 @@
+import { fbLatinAlphLangs, fbNativeLangs } from "./lang-names.ts";
 import { catalogs, localeCodes } from "./locale-catalogs.ts";
 import templates from "./message-templates.json";
 
 const root: HTMLElement = document.documentElement;
-const rtl: Set<string> = new Set(["ar", "he", "ur", "fa", "sd", "ckb", "ps", "ug", "yi"]);
+const rtl: Set<string> = new Set([
+  "ar",
+  "arc",
+  "ckb",
+  "dv",
+  "fa",
+  "hbo",
+  "he",
+  "ks",
+  "ps",
+  "sam",
+  "sd",
+  "syc",
+  "ug",
+  "ur",
+  "yi",
+]);
 const aliases: Record<string, string> = {
   nb: "no",
   nn: "no",
@@ -53,7 +70,7 @@ function translate(value: string, dynamic = false): string {
       if (match) {
         const translated: string = (catalog[rule.source] ?? rule.source).replace(
           /\{(\d+)}/g,
-          (_, index: string): string => {
+          (_: string, index: string): string => {
             const part: string = match[Number(index) + 1] ?? "";
             const duration: RegExpExecArray | null = /^(\d+) days · (\d+) hours · (\d+) min$/.exec(
               part,
@@ -179,58 +196,60 @@ systemTheme.addEventListener("change", (): void => applyTheme(themePreference));
 applyTheme(themePreference);
 
 const dialog: HTMLDialogElement = element<HTMLDialogElement>("languageDialog");
-const languageButton: HTMLButtonElement = element<HTMLButtonElement>("languageToggle");
+const langButton: HTMLButtonElement = element<HTMLButtonElement>("languageToggle");
 const search: HTMLInputElement = element<HTMLInputElement>("languageSearch");
 const options: HTMLElement = element("languageOptions");
-const fallbackNames: Record<string, string> = {
-  ayr: "Aymar aru",
-  lus: "Mizo ṭawng",
-  mni: "ꯃꯤꯇꯩ ꯂꯣꯟ",
-  bho: "भोजपुरी",
-  yue: "粵語",
-};
-function languageName(code: string, displayLocale: string): string {
+function fbLangName(code: string, displayLocale: string): string {
+  if (displayLocale === "en") return fbLatinAlphLangs[code] ?? fbNativeLangs[code] ?? code;
+  return fbNativeLangs[code] ?? code;
+}
+function langName(code: string, displayLocale: string): string {
+  const fallback: string = fbLangName(code, displayLocale);
   try {
-    return (
-      new Intl.DisplayNames([displayLocale], { type: "language" }).of(code) ??
-      fallbackNames[code] ??
-      code
-    );
+    const displayed: string | undefined = new Intl.DisplayNames([displayLocale], {
+      type: "language",
+    }).of(code);
+    return displayed && displayed !== code ? displayed : fallback;
   } catch {
-    return fallbackNames[code] ?? code;
+    return fallback;
   }
 }
-const languages: { code: string; native: string; english: string }[] = localeCodes.map(
-  (code: string): { code: string; native: string; english: string } => ({
+const langNameCollator: Intl.Collator = new Intl.Collator("en", { sensitivity: "base" });
+const langs: { code: string; native: string; english: string }[] = localeCodes
+  .map((code: string): { code: string; native: string; english: string } => ({
     code,
-    native: fallbackNames[code] ?? languageName(code, code),
-    english: languageName(code, "en"),
-  }),
-);
-function normalize(value: string): string {
+    native: fbNativeLangs[code] ?? langName(code, code),
+    english: langName(code, "en"),
+  }))
+  .sort(
+    (
+      a: { code: string; native: string; english: string },
+      b: { code: string; native: string; english: string },
+    ): number => langNameCollator.compare(a.english, b.english) || a.code.localeCompare(b.code),
+  );
+function norm(value: string): string {
   return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
 }
-function renderLanguages(): void {
+function renderLangs(): void {
   options.replaceChildren();
-  const query: string = normalize(search.value.trim());
-  for (const language of languages) {
-    if (!normalize(`${language.native} ${language.english} ${language.code}`).includes(query))
-      continue;
+  const query: string = norm(search.value.trim());
+  for (const lang of langs) {
+    if (!norm(`${lang.native} ${lang.english} ${lang.code}`).includes(query)) continue;
     const button: HTMLButtonElement = document.createElement("button");
     button.type = "button";
     button.className = "language-option";
-    button.dataset.locale = language.code;
-    button.setAttribute("aria-pressed", String(language.code === locale));
+    button.dataset.locale = lang.code;
+    button.setAttribute("aria-pressed", String(lang.code === locale));
     const name: HTMLSpanElement = document.createElement("span");
-    name.textContent = language.native;
-    name.lang = language.code;
+    name.textContent = lang.native;
+    name.lang = lang.code;
     name.dir = "auto";
     const code: HTMLElement = document.createElement("small");
-    code.textContent = language.code.toUpperCase();
+    code.textContent = lang.code.toUpperCase();
     code.dir = "ltr";
     button.append(name, code);
     button.addEventListener("click", (): void => {
-      setLocale(language.code);
+      setLocale(lang.code);
       dialog.close();
     });
     options.append(button);
@@ -250,21 +269,21 @@ function setLocale(next: string, persist = true): void {
   const title: HTMLTitleElement | null = document.querySelector("title");
   if (title) render(title);
   observe();
-  renderLanguages();
+  renderLangs();
 }
-languageButton.addEventListener("click", (): void => {
+langButton.addEventListener("click", (): void => {
   search.value = "";
-  renderLanguages();
+  renderLangs();
   dialog.showModal();
-  languageButton.setAttribute("aria-expanded", "true");
+  langButton.setAttribute("aria-expanded", "true");
   search.focus();
 });
 element("closeLanguage").addEventListener("click", (): void => dialog.close());
 dialog.addEventListener("close", (): void => {
-  languageButton.setAttribute("aria-expanded", "false");
-  languageButton.focus();
+  langButton.setAttribute("aria-expanded", "false");
+  langButton.focus();
 });
-dialog.addEventListener("click", (event: PointerEvent): void => {
+dialog.addEventListener("click", (event: MouseEvent): void => {
   if (event.target !== dialog) return;
   const box: DOMRect = dialog.getBoundingClientRect();
   if (
@@ -275,7 +294,7 @@ dialog.addEventListener("click", (event: PointerEvent): void => {
   )
     dialog.close();
 });
-search.addEventListener("input", renderLanguages);
+search.addEventListener("input", renderLangs);
 setLocale(locale, false);
 window.addEventListener("storage", (event: StorageEvent): void => {
   if (event.key === "seng-theme" || event.key === null) {

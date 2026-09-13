@@ -189,7 +189,7 @@ public final class AirportParkingWebApp {
 	}
 
 	private void resetRegistry() {
-		if (!isConfirmAction("Reset data changes back to the SQLite DB seed?")) {
+		if (!isConfirmAction("Reset database?")) {
 			return;
 		}
 		regReset();
@@ -198,7 +198,7 @@ public final class AirportParkingWebApp {
 		refreshVehicleRegistration();
 		text("registryOwnerCount", String.valueOf(regOwnerCount()));
 		text("registryVehicleCount", String.valueOf(regVehicleCount()));
-		setRegistryAuthMessage("Data reset to the SQLite DB seed.", "success");
+		setRegistryAuthMessage("Database reset to the SQLite seed.", "success");
 	}
 
 	private void saveOwnerProfile() {
